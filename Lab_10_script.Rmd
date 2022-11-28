@@ -140,6 +140,10 @@ The data are zeros or ones (either happened or not); you only see ones and zeros
 How can we interpret this plot? 
 The dashed line is the null model and the blue line is the logit model with per capita income as an explanatory variable.  The black dots are data, 1 is on the coast, 0 is inland. 
 
+
+
+### When researchers are making maps in R, basically no one codes it from scratch. They copy and paste from another script, and adapt it to their own.  
+
 # Build a simple map of California 
 
 In your career, you may have to show the location where sample were collected or where the research was conducted.  Maps can be difficult in `R`, but some people swear by the growing community that is building out mapping features in an open access platform.  Here we will keep it very simple.  
@@ -156,10 +160,49 @@ counties <- map_data("county")
 ca_county <- subset(counties, region == "california")
 
 #uses ggplot and ggmap to build a base map of california
-ca_base <- ggplot(data = ca_df, mapping = aes(x = long, y = lat, group = group)) + coord_fixed(1.3) + geom_polygon(color = "black", fill = "gray") +theme_bw()
+ca_base <- ggplot(data = ca_df, mapping = aes(x = long, y = lat, group = group)) + 
+  coord_fixed(1.3) + 
+  geom_polygon(color = "black", fill = "gray") +
+  theme_minimal()
 
 ca_base
 ```
+
+```{r}
+### try my own! MAINE
+
+#data needed for making the map using packages `maps`
+states_2 <- map_data("state")
+me_df <- subset(states, region == "maine")
+counties_2 <- map_data("county")
+me_county_2 <- subset(counties, region == "maine")
+
+#uses ggplot and ggmap to build a base map of maine
+me_base <- ggplot(data = me_df, mapping = aes(x = long, y = lat, group = group)) + 
+  coord_fixed(1.3) + 
+  geom_polygon(color = "black", fill = "gray") +
+  theme_minimal()
+
+me_base
+
+
+### try my own! WASHINGTON
+#data needed for making the map using packages `maps`
+states_3 <- map_data("state")
+wa_df <- subset(states, region == "washington")
+counties_3 <- map_data("county")
+wa_county_3 <- subset(counties, region == "washington")
+
+#uses ggplot and ggmap to build a base map of washington
+wa_base <- ggplot(data = wa_df, mapping = aes(x = long, y = lat, group = group)) + 
+  coord_fixed(1.3) + 
+  geom_polygon(color = "black", fill = "gray") +
+  theme_minimal()
+
+wa_base
+```
+
+
 
  
 ### Build upon the California map and add counties
@@ -183,7 +226,8 @@ ca_base_counties +theme_nothing()
 
 ```{r}
 ca_base_counties + 
-  geom_point(aes(x = -119.879208, y = 34.4088777), color = "black", size = 5) + labs(x="Longitude", y="Latitude")
+  geom_point(aes(x = -119.879208, y = 34.4088777), color = "black", size = 5) + 
+  labs(x="Longitude", y="Latitude")
 
 ```
 
