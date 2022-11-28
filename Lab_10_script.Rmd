@@ -232,3 +232,7 @@ ca_base_counties +
 ```
 
 There is so much more.  Start with the short module overview [here](https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html).
+
+
+R can handle shape files. but it is very challenging. 
+Does not work well for really complex maps... unless you're an expert
