@@ -1,0 +1,190 @@
+---
+title: "Lab_10_key + additions in lab section"
+author: "C.L. Jerde ... adapted by gabrielle"
+date: "2022-11-27"
+output:   
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, results=TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+#install.packages("ggmap")
+library(ggmap)
+#install.packages("maps")
+library(maps)
+#install.packages("mapdata")
+library(mapdata)
+```
+
+# Lab 10: Logistic Regression example and simple maps
+
+**Set up an R project** and load up the coast_living.csv data.  You will need to add packages `ggmap`, `maps`, and `mapdata`. You should also set up code folding for practice and set the default options of your chunks to `echo= TRUE`, `message=FALSE`, `warning = FALSE`, `results = TRUE` and then we will modify them for each chunk as we need different information displayed. This is practice for making a professional looking document. Look at the difference between this lab's .RMD file and the .HTML file.
+
+**This week we will:** 1. work through the lecture example on logistic regression. 2. make a simple map of California with a location dot
+
+# Simple Logistic Regression
+
+### Import the data
+
+In keeping with our D, E, I, & B discussion, let us look at some income inequality related to where people live.  For this example taken from Maine, median per-capita income data is aggregated at the county level for the state of Maine. We will focus on the relationship between income and whether or not the county is on the coast.  
+
+```{r, results=FALSE}
+
+# data from:https://mgimond.github.io/Stats-in-R/Logistic.html and also available as a .csv file on Gauchoapce
+coast_living <- read_csv(here("data","coast_living.csv"))
+
+#We will look at the simple case of admit/don't admit as a function of GPA
+coast_living_mod <-coast_living %>% clean_names %>% select("coast","per_capita_income")
+
+
+# Change yes to 1 and no to 0
+coast_living_mod$coast[coast_living_mod$coast=="yes"] <- 1
+coast_living_mod$coast[coast_living_mod$coast=="no"] <- 0
+coast_living_mod$coast<-as.numeric(coast_living_mod$coast)
+```
+
+### Logistic Regression model fit using `glm()`
+
+GLM stands for Generalized Linear Models. This means there is a linear component to the model, $b_0 + b_1*x_1 + ...$. However, the model itself can be non-linear. In this case we are using a logit model part of the family of binomial models. If you want to learn more, take ESM 244: Advance Environmental Data Analysis. For our thinking we will consider it modeling the probability of a coin flip (heads or tails, zero or one) as a function of some variable of interest.  Here we want model the probability of being a coastal county as a function of per capita income.  
+
+Here is a good introduction to GLM: (website)[https://www.datacamp.com/tutorial/generalized-linear-models]
+
+```{r, results=FALSE}
+m0_logit <- glm(coast ~ 1, data = coast_living_mod, family = "binomial")
+
+# coast is the response variable
+# 1 means that coast is not influenced by per capita income
+
+m1_logit <- glm(coast ~ per_capita_income, data = coast_living_mod, family = "binomial")
+# coast predicted as a function of per capita income
+
+```
+
+
+### Model summary
+Two models are fit. The null model is a constant only model the first model has the probably modeled as a function of the per capita income in each county.
+
+```{r}
+summary(m0_logit)
+
+summary(m1_logit)
+
+```
+notes ^
+- p value of 1 means that the coin is NOT unfair
+- the intercepts for the m1 are not directly able to be interpreted 
+
+
+What is the null model? A weighted coin flip...maybe, but we can calculate it as
+
+$Pr= 1/(1+exp(-1*b_0))$ for the constant model or at any given per capita income (PCI) as 
+
+$Pr= 1/(1+exp(-1*(b_0+b_1*PCI))$
+
+```{r}
+#Note model 1 is a constant probability model. The probability of being on the coast is 
+
+pr_coast<-1/(1+exp(-1*(-2.776e-17))) # see intercept estimate of m0_logit
+
+pr_coast # this is 0.5 or equal chance model
+```
+NUll model: essentially, "give me a county, I'll flip a coin and tell you if it is on the coast or not"
+
+
+
+What do we conclude? 
+
+### Model selection
+
+Model selection with AIC or BIC can be used for logistic regression and most generalized linear modeling approaches. Remember to look at the delta IC for inference.
+
+```{r}
+#Can do multi-model inference using BIC or AIC just like in Multiple Linear Regression
+BIC(m0_logit)
+BIC(m1_logit)
+delta_BIC <- BIC(m0_logit) - BIC(m1_logit)
+delta_BIC
+```
+
+Here there the $\Delta$BIC a 4.6., so there is marginal evidence to select model 1 over the null model.
+There is some discriminatory power to look at per capita income in relation to whether a county is on the coast
+
+### Logistic Regression plot
+
+Plots of logistic regression can be challenging.  But the `stat_smooth()` function can help.
+
+```{r}
+ggplot(coast_living_mod, aes(x=per_capita_income, y=coast)) + 
+  geom_point(size=2.2) + 
+  xlim(0,40000) + 
+  xlab("Per capita income (US$)") + 
+  ylab("Probability of being a coastal county")+
+  stat_smooth(method="glm", se=FALSE, fullrange=TRUE, method.args = list(family=binomial)) +
+  geom_hline(yintercept=0.5, linetype="dashed", color="black", size=1.1) + 
+  theme_minimal()
+
+```
+^ this is modeling the weight
+
+If I give you a per capita income, you're modeling the probability that it will be on the coast. The probability that you will be on the coast is very small for the low incomes.
+We only want to start the discussion at about 1800 dollars, because we only want to talk about OUR dataset, do not extrapolate. The probability of being on the coast increases as the per capita increases. 
+The data are zeros or ones (either happened or not); you only see ones and zeros, but you can use the broad spattering to make assessments of the data; the proportions of counties that should be on the coast. There is a lot of error in this model.  
+
+
+
+
+How can we interpret this plot? 
+The dashed line is the null model and the blue line is the logit model with per capita income as an explanatory variable.  The black dots are data, 1 is on the coast, 0 is inland. 
+
+# Build a simple map of California 
+
+In your career, you may have to show the location where sample were collected or where the research was conducted.  Maps can be difficult in `R`, but some people swear by the growing community that is building out mapping features in an open access platform.  Here we will keep it very simple.  
+
+### Basic data and code needed for a map of California
+
+```{r}
+# code from: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+
+#data needed for making the map using packages `maps`
+states <- map_data("state")
+ca_df <- subset(states, region == "california")
+counties <- map_data("county")
+ca_county <- subset(counties, region == "california")
+
+#uses ggplot and ggmap to build a base map of california
+ca_base <- ggplot(data = ca_df, mapping = aes(x = long, y = lat, group = group)) + coord_fixed(1.3) + geom_polygon(color = "black", fill = "gray") +theme_bw()
+
+ca_base
+```
+
+ 
+### Build upon the California map and add counties
+
+
+```{r}
+#put the counties on the map
+ca_base_counties<- ca_base +  geom_polygon(data = ca_county, fill = NA, color = "black") +
+  geom_polygon(color = "black", fill = NA)  # get the state border back on top
+
+ca_base_counties
+```
+
+### Drop all the grids and just have the shape of California
+
+```{r}
+ca_base_counties +theme_nothing()
+```
+
+### Add a data point for UCSB (approximately at Coal Oil Point Reserve)
+
+```{r}
+ca_base_counties + 
+  geom_point(aes(x = -119.879208, y = 34.4088777), color = "black", size = 5) + labs(x="Longitude", y="Latitude")
+
+```
+
+There is so much more.  Start with the short module overview [here](https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html).
